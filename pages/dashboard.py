@@ -1,7 +1,6 @@
 import streamlit as st
 import gspread
 import pandas as pd
-from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
 
 # Set up Streamlit page
@@ -11,7 +10,7 @@ st.set_page_config(
 )
 
 # Access Google Sheet
-gc = gspread.service_account()  # No credentials needed for public sheets
+gc = gspread.Client()  # Create a client without credentials
 sheet = gc.open_by_url('https://docs.google.com/spreadsheets/d/13L0yBtHGAtAYOEegd2pf8bMtR3y2PnN3M0OWOC5de68/edit?usp=sharing')
 worksheet = sheet.sheet1
 data = worksheet.get_all_records()
