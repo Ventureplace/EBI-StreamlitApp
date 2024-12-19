@@ -216,8 +216,9 @@ research_vs_subaward = pd.DataFrame({
 # st.plotly_chart(fig_research_subaward, use_container_width=True)
 
 def load_finance_data():
-    # Load CSV and clean up
-    df = pd.read_csv('EBI Dashboard Data - Finance Data-2.csv')
+    # Load data from Google Sheets
+    conn_funding = st.connection("gsheets_funding", type=GSheetsConnection)
+    df = conn_funding.read()
     
     # Remove rows after the actual data (notes, totals, etc.)
     df = df[df['Type'].notna()]  # Keep only rows with a valid Type
@@ -317,7 +318,8 @@ st.header("Program Funding Analysis")
 
 # Load and prepare data
 finance_df = load_finance_data()
-productivity_df = pd.read_csv('EBI Dashboard Data - Productivity Data.csv')
+conn_dashboard = st.connection("gsheets_dashboard", type=GSheetsConnection)
+productivity_df = conn_dashboard.read()
 
 # Get program funding data and merged dataframe
 program_funding_df, merged_df = analyze_program_funding(finance_df, productivity_df)
