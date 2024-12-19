@@ -44,23 +44,29 @@ use_container_width=True )
 # Display header for IP metrics section
 st.header("Successful IP Metrics")
 
-# Create 4 equal columns for metrics
-col1, col2, col3, col4 = st.columns(4)
+# Create 5 equal columns for metrics
+col1, col2, col3, col4, col5 = st.columns(5)
 
 # Display total number of unique inventions
 with col1:
-    st.metric(label="Total IPs📝", value=df['Patent Title'].nunique())
+    st.metric(label="GlobalIPs📝", value=df['Patent Title'].nunique())
 
 # Display number of Shell inventions by filtering Company column
 with col2:
-    st.metric(label="Total Shell IPs🐚", value=df[df['Sponsor'] == 'Shell']['Patent Title'].nunique())
+    shell_ips = df[df['Sponsor'] == 'Shell']['Patent Title'].nunique()
+    st.metric(label="Total Shell IPs🐚", value=shell_ips)
 
 # Display number of BP inventions by filtering Company column  
 with col3:
-    st.metric(label="Total BP IPs☀️", value=df[df['Sponsor'] == 'BP']['Patent Title'].nunique())
+    bp_ips = df[df['Sponsor'] == 'BP']['Patent Title'].nunique()
+    st.metric(label="Total BP IPs☀️", value=bp_ips)
+
+# Display sum of Shell and BP IPs
+with col4:
+    st.metric(label="Unique IPs 🔬", value=shell_ips + bp_ips)
 
 # Display total number of unique Principal Investigators
-with col4:
+with col5:
     st.metric(label="Total PI's 👨‍🔬", value=df['PI'].nunique())
 
 

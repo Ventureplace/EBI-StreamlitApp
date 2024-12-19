@@ -37,6 +37,8 @@ def consolidate_data(df):
 projects_df, funding_df = load_data()
 projects_df = consolidate_data(projects_df)
 
+
+
 # Advanced search functionality
 def search_dataframe(df, search_term):
     """
@@ -180,25 +182,15 @@ ebi_distribution = pd.DataFrame({
 })
 
 # Display total amounts
-st.header("EBI Fund Distribution")
-col1, col2 = st.columns(2)
+st.header("Total EBI Contribution to Campus")
+col1, col2, col3 = st.columns(3)
 with col1:
-    st.metric("Berkeley's Earnings Research", f"${berkeley_research_earnings:,.2f}")
+    st.metric("Berkeley Research Funds", f"${berkeley_research_earnings:,.2f}")
 with col2:
-    st.metric("Berkeley's Earnings Admin", f"${berkeley_admin_earnings:,.2f}")
-
-# Create and display pie chart
-fig = px.pie(ebi_distribution,
-             values='Amount',
-             names='Category',
-             title='Distribution of EBI Funds')
-st.plotly_chart(fig, use_container_width=True)
-
-# Create pie chart data for research vs subaward distribution
-research_vs_subaward = pd.DataFrame({
-    'Category': ['Research', 'Subaward'],
-    'Amount': [0, 0]  # Values left blank as requested
-})
+    st.metric("Non-Research Funds", f"${berkeley_admin_earnings:,.2f}") 
+with col3:
+    total_funds = berkeley_research_earnings + berkeley_admin_earnings
+    st.metric("Total Funds", f"${total_funds:,.2f}")
 
 
 def load_finance_data():
@@ -267,10 +259,8 @@ def create_top_pi_chart(df):
     return fig
 
 def analyze_program_funding(finance_df, productivity_df):
-    # Clean PI names in productivity data to match finance data (last names only)
     productivity_df['Last_Name'] = productivity_df['Principle Investigator'].str.split().str[-1]
     
-    # Merge finance data with productivity data using PI last name
     merged_df = pd.merge(
         finance_df,
         productivity_df[['Last_Name', 'Program', 'Discipline']],
@@ -279,25 +269,60 @@ def analyze_program_funding(finance_df, productivity_df):
         how='inner'
     )
     
-    # Calculate total funding by program
-    program_funding = []
-    for program in merged_df['Program'].unique():
-        program_data = merged_df[merged_df['Program'] == program]
+    # Change to group by Discipline instead of Program
+    discipline_funding = []
+    for discipline in merged_df['Discipline'].unique():
+        discipline_data = merged_df[merged_df['Discipline'] == discipline]
         total_funding = 0
         
-        # Sum all actual funding for each year
         for year in range(2008, 2024):
             actual_col = f'{year} Actual'
-            if actual_col in program_data.columns:
-                total_funding += program_data[actual_col].sum()
+            if actual_col in discipline_data.columns:
+                total_funding += discipline_data[actual_col].sum()
         
-        program_funding.append({
-            'Program': program,
+        discipline_funding.append({
+            'Discipline': discipline,
             'Total_Funding': total_funding,
-            'Number_of_PIs': len(program_data['PI'].unique())
+            'Number_of_PIs': len(discipline_data['PI'].unique())
         })
     
-    return pd.DataFrame(program_funding), merged_df  # Return both dataframes
+    return pd.DataFrame(discipline_funding), merged_df
+
+def analyze_institution_funding(finance_df, productivity_df):
+    # Merge finance and productivity data
+    productivity_df['Last_Name'] = productivity_df['Principle Investigator'].str.split().str[-1]
+    
+    merged_df = pd.merge(
+        finance_df,
+        productivity_df[['Last_Name', 'Institution', 'Sponsor']],
+        left_on='PI',
+        right_on='Last_Name',
+        how='inner'
+    )
+    
+    # Calculate total funding per institution for BP period (2008-2015)
+    bp_funding = {}
+    for institution in merged_df['Institution'].unique():
+        inst_data = merged_df[merged_df['Institution'] == institution]
+        total = 0
+        for year in range(2008, 2016):
+            actual_col = f'{year} Actual'
+            if actual_col in inst_data.columns:
+                total += inst_data[actual_col].sum()
+        bp_funding[institution] = total
+
+    # Calculate total funding per institution for Shell period (2016-2024)
+    shell_funding = {}
+    for institution in merged_df['Institution'].unique():
+        inst_data = merged_df[merged_df['Institution'] == institution]
+        total = 0
+        for year in range(2016, 2024):
+            actual_col = f'{year} Actual'
+            if actual_col in inst_data.columns:
+                total += inst_data[actual_col].sum()
+        shell_funding[institution] = total
+
+    return bp_funding, shell_funding
 
 # Create visualizations
 st.header("Program Funding Analysis")
@@ -313,13 +338,13 @@ program_funding_df = program_funding_df.sort_values('Total_Funding', ascending=F
 
 # Create program funding visualization
 fig_program = px.bar(program_funding_df,
-                     x='Program',
+                     x='Discipline',  # Changed from 'Program'
                      y='Total_Funding',
                      text='Number_of_PIs',
-                     title='Total Funding by Program')
+                     title='Total Funding by Discipline')  # Updated title
 
 fig_program.update_layout(
-    xaxis_title="Program",
+    xaxis_title="Discipline",  # Changed from "Program"
     yaxis_title="Total Funding ($)",
     yaxis_tickformat='$,.0f'
 )
@@ -331,88 +356,104 @@ fig_program.update_traces(
 
 st.plotly_chart(fig_program, use_container_width=True)
 
-# Add high-level program analysis charts
+# # Add high-level program analysis charts
+# col1, col2 = st.columns(2)
+
+# with col1:
+#     # Total Research vs Sub-award distribution
+#     actual_columns = [col for col in merged_df.columns if 'Actual' in col or 'Acual' in col]  # Handle typo in 2012
+    
+#     total_by_type = merged_df.groupby('Type')[actual_columns].sum().sum(axis=1).reset_index()
+#     total_by_type.columns = ['Type', 'Total_Funding']
+    
+#     fig_pie = px.pie(total_by_type,
+#                      values='Total_Funding',
+#                      names='Type',
+#                      title='Total Distribution: Research vs Sub-award')
+    
+#     fig_pie.update_traces(textinfo='percent+label')
+#     st.plotly_chart(fig_pie, use_container_width=True)
+
+# with col2:
+#     # Research vs Sub-award split by discipline
+#     type_split = merged_df.groupby(['Discipline', 'Type'])['PI'].count().reset_index()
+#     fig_type = px.bar(type_split,
+#                       x='Discipline',
+#                       y='PI', 
+#                       color='Type',
+#                       title='Research vs Sub-award Distribution by Discipline',
+#                       barmode='stack')
+#     fig_type.update_layout(yaxis_title="Number of PIs")
+#     st.plotly_chart(fig_type, use_container_width=True)
+
+# After loading data and before creating other visualizations:
+bp_dist, shell_dist = analyze_institution_funding(finance_df, productivity_df)
+
+
+# Calculate combined funding
+combined_funding = {}
+for institution in set(bp_dist.keys()) | set(shell_dist.keys()):
+    combined_funding[institution] = bp_dist.get(institution, 0) + shell_dist.get(institution, 0)
+
+# Create combined funding visualization below the two columns
+st.markdown("---")  # Add a visual separator
+st.subheader("Total Combined Funding Distribution (2008-2024)")
+
+fig_combined = px.pie(
+    values=list(combined_funding.values()),
+    names=list(combined_funding.keys()),
+    title='Combined Funding Distribution by Institution (2008-2024)'
+)
+fig_combined.update_traces(textinfo='percent+label')
+st.plotly_chart(fig_combined, use_container_width=True)
+
+
+# Create institution funding visualizations
+st.header("Institution Funding Distribution")
 col1, col2 = st.columns(2)
 
 with col1:
-    # Total Research vs Sub-award distribution
-    actual_columns = [col for col in merged_df.columns if 'Actual' in col or 'Acual' in col]  # Handle typo in 2012
-    
-    total_by_type = merged_df.groupby('Type')[actual_columns].sum().sum(axis=1).reset_index()
-    total_by_type.columns = ['Type', 'Total_Funding']
-    
-    fig_pie = px.pie(total_by_type,
-                     values='Total_Funding',
-                     names='Type',
-                     title='Total Distribution: Research vs Sub-award')
-    
-    fig_pie.update_traces(textinfo='percent+label')
-    st.plotly_chart(fig_pie, use_container_width=True)
+    fig_bp = px.pie(
+        values=list(bp_dist.values()),
+        names=list(bp_dist.keys()),
+        title='BP Funding Distribution by Institution (2008-2015)'
+    )
+    fig_bp.update_traces(textinfo='percent+label')
+    st.plotly_chart(fig_bp, use_container_width=True)
 
 with col2:
-    # Research vs Sub-award split by discipline
-    type_split = merged_df.groupby(['Discipline', 'Type'])['PI'].count().reset_index()
-    fig_type = px.bar(type_split,
-                      x='Discipline',
-                      y='PI', 
-                      color='Type',
-                      title='Research vs Sub-award Distribution by Discipline',
-                      barmode='stack')
-    fig_type.update_layout(yaxis_title="Number of PIs")
-    st.plotly_chart(fig_type, use_container_width=True)
+    fig_shell = px.pie(
+        values=list(shell_dist.values()),
+        names=list(shell_dist.keys()),
+        title='Shell Funding Distribution by Institution (2016-2024)'
+    )
+    fig_shell.update_traces(textinfo='percent+label')
+    st.plotly_chart(fig_shell, use_container_width=True)
 
-# Calculate and display program efficiency metrics - Shows how well each program utilized their allocated budget
-efficiency_data = []
+
+
+
+
+
+
+# Now show the program details
+st.subheader("Program Details")
 for program in merged_df['Program'].unique():
     program_data = merged_df[merged_df['Program'] == program]
-    total_budget = 0
-    total_actual = 0
+    total_funding = sum(
+        program_data[f'{year} Actual'].sum() 
+        for year in range(2008, 2024) 
+        if f'{year} Actual' in program_data.columns
+    )
     
-    # Sum up all budgeted and actual spending from 2008-2024
-    for year in range(2008, 2024):
-        budget_col = f'{year} Budget'
-        actual_col = f'{year} Actual'
-        if budget_col in program_data.columns and actual_col in program_data.columns:
-            total_budget += program_data[budget_col].sum()  # Total money allocated/planned
-            total_actual += program_data[actual_col].sum()  # Total money actually spent
-    
-    # Only include programs that had a budget allocated
-    if total_budget > 0:
-        # Calculate efficiency as percentage of budget actually used
-        # Example: If budget was $100 and actual spent was $95, efficiency = 95%
-        efficiency = (total_actual / total_budget) * 100
-        efficiency_data.append({
-            'Program': program,
-            'Budget Utilization': efficiency,  # Percentage of budget used
-            'Total Budget': total_budget,      # Total money allocated
-            'Total Actual': total_actual       # Total money spent
-        })
-
-# Create bar chart showing budget utilization rate for each program
-efficiency_df = pd.DataFrame(efficiency_data)
-fig_efficiency = px.bar(efficiency_df,
-                        x='Program',
-                        y='Budget Utilization',
-                        title='Program Budget Utilization Rate (%)',  # Higher % means program used more of their allocated budget
-                        text='Budget Utilization')
-
-# Format the display to show percentage with 1 decimal point
-fig_efficiency.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-fig_efficiency.update_layout(yaxis_title="Budget Utilization (%)")
-st.plotly_chart(fig_efficiency, use_container_width=True)
-
-# Now show the program details (existing expandable sections code)
-st.subheader("Program Details")
-for _, row in program_funding_df.iterrows():
-    with st.expander(f"{row['Program']} (${row['Total_Funding']:,.2f})"):
+    with st.expander(f"{program} (${total_funding:,.2f})"):
         # Get PIs and their funding for this program
-        program_pis = merged_df[merged_df['Program'] == row['Program']]
+        program_pis = merged_df[merged_df['Program'] == program]
         pi_funding = []
         
         for pi in program_pis['PI'].unique():
             pi_data = program_pis[program_pis['PI'] == pi]
             total = 0
-            # Sum all actual funding for each year
             for year in range(2008, 2024):
                 actual_col = f'{year} Actual'
                 if actual_col in pi_data.columns:
@@ -421,10 +462,10 @@ for _, row in program_funding_df.iterrows():
             pi_funding.append({
                 'PI': pi,
                 'Type': pi_data['Type'].iloc[0],
-                'Total_Funding': total
+                'Total_Funding': total,
+                'Discipline': pi_data['Discipline'].iloc[0]
             })
         
-        # Convert to DataFrame only if we have data
         if pi_funding:
             pi_df = pd.DataFrame(pi_funding)
             pi_df = pi_df.sort_values('Total_Funding', ascending=False)
@@ -432,13 +473,70 @@ for _, row in program_funding_df.iterrows():
             # Display program metrics
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("Total Funding", f"${row['Total_Funding']:,.2f}")
+                st.metric("Total Funding", f"${total_funding:,.2f}")
             with col2:
-                st.metric("Number of PIs", row['Number_of_PIs'])
+                st.metric("Number of PIs", len(pi_df))
             with col3:
-                avg_funding = row['Total_Funding'] / row['Number_of_PIs']
+                avg_funding = total_funding / len(pi_df)
                 st.metric("Average per PI", f"${avg_funding:,.2f}")
             
+            # Create 3 columns for charts
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                # Existing discipline PI count chart
+                discipline_counts = pi_df['Discipline'].value_counts()
+                fig1 = px.pie(
+                    values=discipline_counts.values,
+                    names=discipline_counts.index,
+                    title='PI Distribution by Discipline'
+                )
+                fig1.update_traces(textinfo='percent+label')
+                st.plotly_chart(fig1, use_container_width=True, key=f"{program}_pi_dist")
+            
+            with col2:
+                # Existing discipline funding chart
+                discipline_funding = pi_df.groupby('Discipline')['Total_Funding'].sum()
+                fig2 = px.pie(
+                    values=discipline_funding.values,
+                    names=discipline_funding.index,
+                    title='Funding Distribution by Discipline'
+                )
+                fig2.update_traces(textinfo='percent+label')
+                st.plotly_chart(fig2, use_container_width=True, key=f"{program}_funding_dist")
+
+            with col3:
+                # Get institution data from productivity_df and prepare PI names
+                productivity_df['Last_Name'] = productivity_df['Principle Investigator'].str.split().str[-1]
+                
+                # Merge using last names
+                program_pis_with_inst = pd.merge(
+                    pi_df,
+                    productivity_df[['Last_Name', 'Institution']],
+                    left_on='PI',  # PI column typically contains last names
+                    right_on='Last_Name',
+                    how='left'
+                )
+                
+                # # Debug print
+                # st.write("Debug - Number of PIs with institutions:", len(program_pis_with_inst))
+                
+                # Calculate funding by institution
+                institution_funding = program_pis_with_inst.groupby('Institution')['Total_Funding'].sum().reset_index()
+                
+                # Only create chart if we have data
+                if not institution_funding.empty:
+                    fig3 = px.pie(
+                        institution_funding,
+                        values='Total_Funding',
+                        names='Institution',
+                        title='Funding Distribution by Institution'
+                    )
+                    fig3.update_traces(textinfo='percent+label')
+                    st.plotly_chart(fig3, use_container_width=True, key=f"{program}_inst_dist")
+                else:
+                    st.warning("No institution funding data available for this program")
+
             # Show PI breakdown
             st.dataframe(
                 pi_df.style.format({
@@ -448,3 +546,7 @@ for _, row in program_funding_df.iterrows():
             )
         else:
             st.write("No PI data available for this program")
+
+
+
+
