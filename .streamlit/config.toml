@@ -1,3 +1,4 @@
 [theme]
 base="light"
 primaryColor="#1aabea"
+st.set_page_config(layout="wide")
