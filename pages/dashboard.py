@@ -208,12 +208,6 @@ research_vs_subaward = pd.DataFrame({
     'Amount': [0, 0]  # Values left blank as requested
 })
 
-# # Create and display pie chart
-# fig_research_subaward = px.pie(research_vs_subaward,
-#                               values='Amount', 
-#                               names='Category',
-#                               title='Distribution: Research vs Subaward')
-# st.plotly_chart(fig_research_subaward, use_container_width=True)
 
 def load_finance_data():
     # Load data from Google Sheets
@@ -364,47 +358,53 @@ with col1:
     st.plotly_chart(fig_pie, use_container_width=True)
 
 with col2:
-    # Research vs Sub-award split by program
-    type_split = merged_df.groupby(['Program', 'Type'])['PI'].count().reset_index()
+    # Research vs Sub-award split by discipline
+    type_split = merged_df.groupby(['Discipline', 'Type'])['PI'].count().reset_index()
     fig_type = px.bar(type_split,
-                      x='Program',
-                      y='PI',
+                      x='Discipline',
+                      y='PI', 
                       color='Type',
-                      title='Research vs Sub-award Distribution by Program',
+                      title='Research vs Sub-award Distribution by Discipline',
                       barmode='stack')
     fig_type.update_layout(yaxis_title="Number of PIs")
     st.plotly_chart(fig_type, use_container_width=True)
 
-# Calculate and display program efficiency metrics
+# Calculate and display program efficiency metrics - Shows how well each program utilized their allocated budget
 efficiency_data = []
 for program in merged_df['Program'].unique():
     program_data = merged_df[merged_df['Program'] == program]
     total_budget = 0
     total_actual = 0
     
+    # Sum up all budgeted and actual spending from 2008-2024
     for year in range(2008, 2024):
         budget_col = f'{year} Budget'
         actual_col = f'{year} Actual'
         if budget_col in program_data.columns and actual_col in program_data.columns:
-            total_budget += program_data[budget_col].sum()
-            total_actual += program_data[actual_col].sum()
+            total_budget += program_data[budget_col].sum()  # Total money allocated/planned
+            total_actual += program_data[actual_col].sum()  # Total money actually spent
     
+    # Only include programs that had a budget allocated
     if total_budget > 0:
+        # Calculate efficiency as percentage of budget actually used
+        # Example: If budget was $100 and actual spent was $95, efficiency = 95%
         efficiency = (total_actual / total_budget) * 100
         efficiency_data.append({
             'Program': program,
-            'Budget Utilization': efficiency,
-            'Total Budget': total_budget,
-            'Total Actual': total_actual
+            'Budget Utilization': efficiency,  # Percentage of budget used
+            'Total Budget': total_budget,      # Total money allocated
+            'Total Actual': total_actual       # Total money spent
         })
 
+# Create bar chart showing budget utilization rate for each program
 efficiency_df = pd.DataFrame(efficiency_data)
 fig_efficiency = px.bar(efficiency_df,
                         x='Program',
                         y='Budget Utilization',
-                        title='Program Budget Utilization Rate (%)',
+                        title='Program Budget Utilization Rate (%)',  # Higher % means program used more of their allocated budget
                         text='Budget Utilization')
 
+# Format the display to show percentage with 1 decimal point
 fig_efficiency.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
 fig_efficiency.update_layout(yaxis_title="Budget Utilization (%)")
 st.plotly_chart(fig_efficiency, use_container_width=True)
