@@ -506,23 +506,21 @@ for program in merged_df['Program'].unique():
                 st.plotly_chart(fig2, use_container_width=True, key=f"{program}_funding_dist")
 
             with col3:
-                # Get institution data from productivity_df and prepare PI names
-                productivity_df['Last_Name'] = productivity_df['Principle Investigator'].str.split().str[-1]
+                # Calculate institution totals directly from pi_df
+                institution_totals = {}
+                for _, row in pi_df.iterrows():
+                    # Get institution from productivity_df using PI's last name
+                    pi_inst = productivity_df[productivity_df['Last_Name'] == row['PI']]['Institution'].iloc[0] \
+                        if not productivity_df[productivity_df['Last_Name'] == row['PI']].empty else 'Unknown'
+                    
+                    # Add funding to institution total
+                    institution_totals[pi_inst] = institution_totals.get(pi_inst, 0) + row['Total_Funding']
                 
-                # Merge using last names
-                program_pis_with_inst = pd.merge(
-                    pi_df,
-                    productivity_df[['Last_Name', 'Institution']],
-                    left_on='PI',  # PI column typically contains last names
-                    right_on='Last_Name',
-                    how='left'
-                )
-                
-                # # Debug print
-                # st.write("Debug - Number of PIs with institutions:", len(program_pis_with_inst))
-                
-                # Calculate funding by institution
-                institution_funding = program_pis_with_inst.groupby('Institution')['Total_Funding'].sum().reset_index()
+                # Create DataFrame for the pie chart
+                institution_funding = pd.DataFrame([
+                    {'Institution': inst, 'Total_Funding': amount} 
+                    for inst, amount in institution_totals.items()
+                ])
                 
                 # Only create chart if we have data
                 if not institution_funding.empty:
