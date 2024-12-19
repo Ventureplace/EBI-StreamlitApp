@@ -162,14 +162,6 @@ with col6:
     st.plotly_chart(fig2, use_container_width=True)
 
 
-st.write("### Finance Dataset Overview")
-st.write(f"Number of rows: {funding_df.shape[0]}")
-st.write(f"Number of columns: {funding_df.shape[1]}")
-st.write("\n### Finance Column Names:")
-st.write(funding_df.columns.tolist())
-
-
-
 # Load data from both sheets
 conn_funding = st.connection("gsheets_funding", type=GSheetsConnection)
 conn_admin = st.connection("gsheets_admin", type=GSheetsConnection)
