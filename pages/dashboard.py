@@ -124,7 +124,7 @@ st.write("\n### Column Names:")
 st.write(projects_df.columns.tolist())
 
 # Create metrics
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
 
 with col1:
     total_projects = len(projects_df)
@@ -135,10 +135,6 @@ with col2:
     st.metric("Total PIs", total_pis)
 
 with col3:
-    total_disciplines = projects_df['Discipline'].nunique()
-    st.metric("Total Disciplines", total_disciplines)
-
-with col4:
     total_programs = projects_df['Program'].nunique()
     st.metric("Total Programs", total_programs)
 
@@ -155,12 +151,12 @@ with col5:
     st.plotly_chart(fig1, use_container_width=True)
 
 with col6:
-    # Projects by Discipline
-    discipline_counts = projects_df['Discipline'].value_counts().reset_index()
-    fig2 = px.pie(discipline_counts, 
+    # Projects by Program
+    program_counts = projects_df['Program'].value_counts().reset_index()
+    fig2 = px.pie(program_counts, 
                   values='count', 
-                  names='Discipline',
-                  title='Distribution by Discipline')
+                  names='Program',
+                  title='Distribution by Program')
     st.plotly_chart(fig2, use_container_width=True)
 
 
@@ -173,7 +169,7 @@ admin_df = conn_admin.read()
 
 # Extract values
 berkeley_research_earnings = 48_858_138.26  # Total Berkeley research earnings
-berkeley_admin_earnings = 1_907_444.95      # Total Berkeley admin earnings
+berkeley_admin_earnings = 1_907_444.95 + 35_846_686.11     # Total Berkeley admin earnings
 
 # Create pie chart data
 ebi_distribution = pd.DataFrame({
@@ -269,24 +265,31 @@ def analyze_program_funding(finance_df, productivity_df):
         how='inner'
     )
     
-    # Change to group by Discipline instead of Program
+    # Calculate total funding by discipline
     discipline_funding = []
+    # Get yearly funding by discipline
+    discipline_yearly_funding = {}
+    
     for discipline in merged_df['Discipline'].unique():
         discipline_data = merged_df[merged_df['Discipline'] == discipline]
         total_funding = 0
+        yearly_totals = {}
         
         for year in range(2008, 2024):
             actual_col = f'{year} Actual'
             if actual_col in discipline_data.columns:
-                total_funding += discipline_data[actual_col].sum()
+                year_total = discipline_data[actual_col].sum()
+                total_funding += year_total
+                yearly_totals[year] = year_total
         
         discipline_funding.append({
             'Discipline': discipline,
             'Total_Funding': total_funding,
             'Number_of_PIs': len(discipline_data['PI'].unique())
         })
+        discipline_yearly_funding[discipline] = yearly_totals
     
-    return pd.DataFrame(discipline_funding), merged_df
+    return pd.DataFrame(discipline_funding), merged_df, discipline_yearly_funding
 
 def analyze_institution_funding(finance_df, productivity_df):
     # Merge finance and productivity data
@@ -333,18 +336,18 @@ conn_dashboard = st.connection("gsheets_dashboard", type=GSheetsConnection)
 productivity_df = conn_dashboard.read()
 
 # Get program funding data and merged dataframe
-program_funding_df, merged_df = analyze_program_funding(finance_df, productivity_df)
+program_funding_df, merged_df, yearly_funding = analyze_program_funding(finance_df, productivity_df)
 program_funding_df = program_funding_df.sort_values('Total_Funding', ascending=False)
 
-# Create program funding visualization
+# Original total funding bar chart
 fig_program = px.bar(program_funding_df,
-                     x='Discipline',  # Changed from 'Program'
+                     x='Discipline',
                      y='Total_Funding',
                      text='Number_of_PIs',
-                     title='Total Funding by Discipline')  # Updated title
+                     title='Total Funding by Program')
 
 fig_program.update_layout(
-    xaxis_title="Discipline",  # Changed from "Program"
+    xaxis_title="Program",
     yaxis_title="Total Funding ($)",
     yaxis_tickformat='$,.0f'
 )
@@ -353,40 +356,35 @@ fig_program.update_traces(
     texttemplate='%{text} PIs',
     textposition='outside'
 )
-
 st.plotly_chart(fig_program, use_container_width=True)
 
-# # Add high-level program analysis charts
-# col1, col2 = st.columns(2)
+# Create time series data
+time_series_data = []
+for discipline, yearly_data in yearly_funding.items():
+    for year, amount in yearly_data.items():
+        time_series_data.append({
+            'Discipline': discipline,
+            'Year': year,
+            'Funding': amount
+        })
 
-# with col1:
-#     # Total Research vs Sub-award distribution
-#     actual_columns = [col for col in merged_df.columns if 'Actual' in col or 'Acual' in col]  # Handle typo in 2012
-    
-#     total_by_type = merged_df.groupby('Type')[actual_columns].sum().sum(axis=1).reset_index()
-#     total_by_type.columns = ['Type', 'Total_Funding']
-    
-#     fig_pie = px.pie(total_by_type,
-#                      values='Total_Funding',
-#                      names='Type',
-#                      title='Total Distribution: Research vs Sub-award')
-    
-#     fig_pie.update_traces(textinfo='percent+label')
-#     st.plotly_chart(fig_pie, use_container_width=True)
+time_series_df = pd.DataFrame(time_series_data)
 
-# with col2:
-#     # Research vs Sub-award split by discipline
-#     type_split = merged_df.groupby(['Discipline', 'Type'])['PI'].count().reset_index()
-#     fig_type = px.bar(type_split,
-#                       x='Discipline',
-#                       y='PI', 
-#                       color='Type',
-#                       title='Research vs Sub-award Distribution by Discipline',
-#                       barmode='stack')
-#     fig_type.update_layout(yaxis_title="Number of PIs")
-#     st.plotly_chart(fig_type, use_container_width=True)
+# Create time series chart
+fig_time_series = px.line(time_series_df, 
+                         x='Year', 
+                         y='Funding', 
+                         color='Discipline',
+                         title='Funding by Program Over Time')
 
-# After loading data and before creating other visualizations:
+fig_time_series.update_layout(
+    xaxis_title="Year",
+    yaxis_title="Funding ($)",
+    yaxis_tickformat='$,.0f'
+)
+
+st.plotly_chart(fig_time_series, use_container_width=True)
+
 bp_dist, shell_dist = analyze_institution_funding(finance_df, productivity_df)
 
 
@@ -398,10 +396,12 @@ for institution in set(bp_dist.keys()) | set(shell_dist.keys()):
 # Create combined funding visualization below the two columns
 st.markdown("---")  # Add a visual separator
 st.subheader("Total Combined Funding Distribution (2008-2024)")
+# Filter out institutions with zero funding
+filtered_funding = {k: v for k, v in combined_funding.items() if v > 0}
 
 fig_combined = px.pie(
-    values=list(combined_funding.values()),
-    names=list(combined_funding.keys()),
+    values=list(filtered_funding.values()),
+    names=list(filtered_funding.keys()),
     title='Combined Funding Distribution by Institution (2008-2024)'
 )
 fig_combined.update_traces(textinfo='percent+label')
@@ -413,18 +413,22 @@ st.header("Institution Funding Distribution")
 col1, col2 = st.columns(2)
 
 with col1:
+    # Filter out null/zero values for BP
+    bp_filtered = {k: v for k, v in bp_dist.items() if v and v > 0}
     fig_bp = px.pie(
-        values=list(bp_dist.values()),
-        names=list(bp_dist.keys()),
+        values=list(bp_filtered.values()),
+        names=list(bp_filtered.keys()),
         title='BP Funding Distribution by Institution (2008-2015)'
     )
     fig_bp.update_traces(textinfo='percent+label')
     st.plotly_chart(fig_bp, use_container_width=True)
 
 with col2:
+    # Filter out null/zero values for Shell  
+    shell_filtered = {k: v for k, v in shell_dist.items() if v and v > 0}
     fig_shell = px.pie(
-        values=list(shell_dist.values()),
-        names=list(shell_dist.keys()),
+        values=list(shell_filtered.values()),
+        names=list(shell_filtered.keys()),
         title='Shell Funding Distribution by Institution (2016-2024)'
     )
     fig_shell.update_traces(textinfo='percent+label')
@@ -484,29 +488,18 @@ for program in merged_df['Program'].unique():
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                # Existing discipline PI count chart
-                discipline_counts = pi_df['Discipline'].value_counts()
+                # Program funding chart
+                program_funding = pi_df.groupby('Type')['Total_Funding'].sum()
                 fig1 = px.pie(
-                    values=discipline_counts.values,
-                    names=discipline_counts.index,
-                    title='PI Distribution by Discipline'
+                    values=program_funding.values,
+                    names=program_funding.index,
+                    title='Funding Distribution by Type'
                 )
                 fig1.update_traces(textinfo='percent+label')
-                st.plotly_chart(fig1, use_container_width=True, key=f"{program}_pi_dist")
-            
-            with col2:
-                # Existing discipline funding chart
-                discipline_funding = pi_df.groupby('Discipline')['Total_Funding'].sum()
-                fig2 = px.pie(
-                    values=discipline_funding.values,
-                    names=discipline_funding.index,
-                    title='Funding Distribution by Discipline'
-                )
-                fig2.update_traces(textinfo='percent+label')
-                st.plotly_chart(fig2, use_container_width=True, key=f"{program}_funding_dist")
+                st.plotly_chart(fig1, use_container_width=True, key=f"{program}_funding_dist")
 
-            with col3:
-                # Calculate institution totals directly from pi_df
+            with col2:
+                # Institution funding chart
                 institution_totals = {}
                 for _, row in pi_df.iterrows():
                     # Get institution from productivity_df using PI's last name
@@ -516,24 +509,59 @@ for program in merged_df['Program'].unique():
                     # Add funding to institution total
                     institution_totals[pi_inst] = institution_totals.get(pi_inst, 0) + row['Total_Funding']
                 
-                # Create DataFrame for the pie chart
-                institution_funding = pd.DataFrame([
-                    {'Institution': inst, 'Total_Funding': amount} 
-                    for inst, amount in institution_totals.items()
-                ])
+                fig2 = px.pie(
+                    values=list(institution_totals.values()),
+                    names=list(institution_totals.keys()),
+                    title='Funding by Institution'
+                )
+                fig2.update_traces(textinfo='percent+label')
+                st.plotly_chart(fig2, use_container_width=True, key=f"{program}_inst_dist")
+
+            with col3:
+                # Deliverables chart (existing code)
+                program_deliverables = productivity_df[productivity_df['Program'] == program]['Productivity and Deliverables'].dropna()
                 
-                # Only create chart if we have data
-                if not institution_funding.empty:
-                    fig3 = px.pie(
-                        institution_funding,
-                        values='Total_Funding',
-                        names='Institution',
-                        title='Funding Distribution by Institution'
-                    )
-                    fig3.update_traces(textinfo='percent+label')
-                    st.plotly_chart(fig3, use_container_width=True, key=f"{program}_inst_dist")
-                else:
-                    st.warning("No institution funding data available for this program")
+                # Initialize counters
+                deliverable_counts = {
+                    'Publications': 0,
+                    'Presentations': 0,
+                    'Reports': 0,
+                    'Other': 0
+                }
+
+                # Process each deliverable entry
+                for entry in program_deliverables:
+                    entry = str(entry).lower()
+                    # Count publications
+                    if any(keyword in entry for keyword in ['publication', 'paper', 'journal', 'article']):
+                        # Try to extract number if format is like "5 publications"
+                        import re
+                        nums = re.findall(r'(\d+)\s*(?:publication|paper|article)', entry)
+                        deliverable_counts['Publications'] += sum([int(n) for n in nums]) if nums else 1
+                    
+                    # Count presentations
+                    if any(keyword in entry for keyword in ['presentation', 'conference', 'workshop']):
+                        nums = re.findall(r'(\d+)\s*(?:presentation|conference|workshop)', entry)
+                        deliverable_counts['Presentations'] += sum([int(n) for n in nums]) if nums else 1
+                    
+                    # Count reports
+                    if 'report' in entry:
+                        nums = re.findall(r'(\d+)\s*report', entry)
+                        deliverable_counts['Reports'] += sum([int(n) for n in nums]) if nums else 1
+                    
+                    # Count other deliverables
+                    if any(keyword in entry for keyword in ['dataset', 'software', 'tool', 'patent']):
+                        deliverable_counts['Other'] += 1
+
+                # Create deliverables chart
+                fig_deliverables = px.bar(
+                    x=list(deliverable_counts.keys()),
+                    y=list(deliverable_counts.values()),
+                    title='Program Deliverables',
+                    labels={'x': 'Type', 'y': 'Count'}
+                )
+                fig_deliverables.update_traces(texttemplate='%{y}', textposition='outside')
+                st.plotly_chart(fig_deliverables, use_container_width=True, key=f"{program}_deliverables")
 
             # Show PI breakdown
             st.dataframe(

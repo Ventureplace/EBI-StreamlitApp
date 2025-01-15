@@ -30,7 +30,7 @@ st.write(df.columns.tolist())
 # Specify column order to display most relevant columns first
 # Use full container width for better visibility
 st.dataframe(df,
-column_order = ['Application_YR','PI','Company','Country', 'Institution','Discipline', 'Program' , 'Patent Title'],
+column_order = ['Application_YR','PI','Company','Country', 'Institution', 'Program' , 'Patent Title'],
 use_container_width=True )
 
 
@@ -81,19 +81,19 @@ col5, col6, = st.columns([0.5, 0.5])
 col7, col8, = st.columns([0.5, 0.5])
 
 with col5:
-    # Count number of patents per discipline
-    discipline_counts = df.groupby('Discipline')['Patent Title'].nunique().reset_index()
-    discipline_counts = discipline_counts.sort_values('Patent Title', ascending=False)
+    # Count number of patents per program
+    program_counts = df.groupby('Program')['Patent Title'].nunique()
 
-    # Create histogram showing patent distribution across disciplines
-    fig = px.bar(discipline_counts,
-                x='Discipline',
-                y='Patent Title',
-                title='Distribution of Patents by Discipline',
-                labels={'Discipline': 'Research Discipline',
-                       'Patent Title': 'Number of Patents'},
-                color='Discipline',  # Color bars by discipline
-                height=500)
+    # Create pie chart showing patent distribution across programs
+    fig = px.pie(
+        values=program_counts.values,
+        names=program_counts.index,
+        title='Distribution of Patents by Program',
+        height=500
+    )
+    
+    # Add percentage labels
+    fig.update_traces(textinfo='percent+label')
 
     # Update layout for better readability
     fig.update_layout(
