@@ -117,11 +117,11 @@ if search_term:
     else:
         st.warning("No matching results found")
 
-st.write("### Dataset Overview")
-st.write(f"Number of rows: {projects_df.shape[0]}")
-st.write(f"Number of columns: {projects_df.shape[1]}")
-st.write("\n### Column Names:")
-st.write(projects_df.columns.tolist())
+# st.write("### Dataset Overview")
+# st.write(f"Number of rows: {projects_df.shape[0]}")
+# st.write(f"Number of columns: {projects_df.shape[1]}")
+# st.write("\n### Column Names:")
+# st.write(projects_df.columns.tolist())
 
 # Create metrics
 col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
