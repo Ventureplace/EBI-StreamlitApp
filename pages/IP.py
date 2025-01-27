@@ -23,22 +23,6 @@ df = conn.read()
 # Convert the Application Year column to string type for consistent display
 df['Application_YR'] = df['Application_YR'].astype(str)
 
-# Display all column names in the DataFrame for debugging/reference
-st.write(df.columns.tolist())
-
-# Show the DataFrame in a Streamlit table widget
-# Specify column order to display most relevant columns first
-# Use full container width for better visibility
-st.dataframe(df,
-column_order = ['Application_YR','PI','Company','Country', 'Institution', 'Program' , 'Patent Title'],
-use_container_width=True )
-
-
-
-
-
-
-
 
 # Show some metrics and charts about the data
 # Display header for IP metrics section
