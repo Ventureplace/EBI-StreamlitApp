@@ -516,13 +516,21 @@ for program in merged_df['Program'].unique():
             # Calculate total from DataFrame
             total_from_df = pi_df['Total_Funding'].sum()
             
+            # Calculate Research and Sub-award totals from the DataFrame
+            research_total = pi_df[pi_df['Type'] == 'Research']['Total_Funding'].sum()
+            subaward_total = pi_df[pi_df['Type'] == 'Sub-award']['Total_Funding'].sum()
+            
             # Display program metrics
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3, col4, col5 = st.columns(5)
             with col1:
                 st.metric("Total Funding", f"${total_from_df:,.2f}")
             with col2:
-                st.metric("Number of PIs", len(pi_df))
+                st.metric("Research Funding", f"${research_total:,.2f}")
             with col3:
+                st.metric("Sub-award Funding", f"${subaward_total:,.2f}")
+            with col4:
+                st.metric("Number of PIs", len(pi_df))
+            with col5:
                 avg_funding = total_from_df / len(pi_df)
                 st.metric("Average per PI", f"${avg_funding:,.2f}")
             
