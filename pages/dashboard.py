@@ -181,9 +181,9 @@ ebi_distribution = pd.DataFrame({
 st.header("Total EBI Contribution to Campus")
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.metric("Berkeley Research Funds", f"${berkeley_research_earnings:,.2f}")
+    st.metric("Research Funds", f"${berkeley_research_earnings:,.2f}")
 with col2:
-    st.metric("Non-Research Funds", f"${berkeley_admin_earnings:,.2f}") 
+    st.metric("Outside Funds", f"${berkeley_admin_earnings:,.2f}") 
 with col3:
     total_funds = berkeley_research_earnings + berkeley_admin_earnings
     st.metric("Total Funds", f"${total_funds:,.2f}")
@@ -339,25 +339,6 @@ productivity_df = conn_dashboard.read()
 program_funding_df, merged_df, yearly_funding = analyze_program_funding(finance_df, productivity_df)
 program_funding_df = program_funding_df.sort_values('Total_Funding', ascending=False)
 
-# Original total funding bar chart
-fig_program = px.bar(program_funding_df,
-                     x='Discipline',
-                     y='Total_Funding',
-                     text='Number_of_PIs',
-                     title='Total Funding by Program')
-
-fig_program.update_layout(
-    xaxis_title="Program",
-    yaxis_title="Total Funding ($)",
-    yaxis_tickformat='$,.0f'
-)
-
-fig_program.update_traces(
-    texttemplate='%{text} PIs',
-    textposition='outside'
-)
-st.plotly_chart(fig_program, use_container_width=True)
-
 # Create time series data
 time_series_data = []
 for discipline, yearly_data in yearly_funding.items():
@@ -371,13 +352,42 @@ for discipline, yearly_data in yearly_funding.items():
 time_series_df = pd.DataFrame(time_series_data)
 
 # Create time series chart
-fig_time_series = px.line(time_series_df, 
-                         x='Year', 
-                         y='Funding', 
-                         color='Discipline',
-                         title='Funding by Program Over Time')
+time_series_year_range = st.slider(
+    "Select Year Range",
+    min_value=2008,
+    max_value=2024,
+    value=(2015, 2024),  # Default selection
+    step=1,
+    key="time_series_year_slider"  # Changed key
+)
+
+chart_type = st.selectbox(
+    "Select chart type",
+    ["Bar", "Line", "Area", "Scatter", "Box Plot", "Violin"],
+    key="time_series_chart_type"
+)
+
+filtered_time_series = time_series_df[
+    (time_series_df['Year'] >= time_series_year_range[0]) & 
+    (time_series_df['Year'] <= time_series_year_range[1])
+]
+
+# Create chart based on selection
+if chart_type == "Line":
+    fig_time_series = px.line(filtered_time_series, x='Year', y='Funding', color='Discipline')
+elif chart_type == "Bar":
+    fig_time_series = px.bar(filtered_time_series, x='Year', y='Funding', color='Discipline')
+elif chart_type == "Area":
+    fig_time_series = px.area(filtered_time_series, x='Year', y='Funding', color='Discipline')
+elif chart_type == "Scatter":
+    fig_time_series = px.scatter(filtered_time_series, x='Year', y='Funding', color='Discipline')
+elif chart_type == "Box Plot":
+    fig_time_series = px.box(filtered_time_series, x='Year', y='Funding', color='Discipline')
+elif chart_type == "Violin":
+    fig_time_series = px.violin(filtered_time_series, x='Year', y='Funding', color='Discipline')
 
 fig_time_series.update_layout(
+    title='Funding by Program Over Time',
     xaxis_title="Year",
     yaxis_title="Funding ($)",
     yaxis_tickformat='$,.0f'
@@ -396,8 +406,12 @@ for institution in set(bp_dist.keys()) | set(shell_dist.keys()):
 # Create combined funding visualization below the two columns
 st.markdown("---")  # Add a visual separator
 st.subheader("Total Combined Funding Distribution (2008-2024)")
-# Filter out institutions with zero funding
-filtered_funding = {k: v for k, v in combined_funding.items() if v > 0}
+# Filter out institutions with zero funding and rename UC San Diego
+filtered_funding = {
+    'UC Sister Campus' if k == 'UC San Diego' else k: v 
+    for k, v in combined_funding.items() 
+    if v > 0
+}
 
 fig_combined = px.pie(
     values=list(filtered_funding.values()),
@@ -413,8 +427,12 @@ st.header("Institution Funding Distribution")
 col1, col2 = st.columns(2)
 
 with col1:
-    # Filter out null/zero values for BP
-    bp_filtered = {k: v for k, v in bp_dist.items() if v and v > 0}
+    # Filter out null/zero values for BP and rename UC San Diego
+    bp_filtered = {
+        'UC Sister Campus' if k == 'UC San Diego' else k: v 
+        for k, v in bp_dist.items() 
+        if v and v > 0
+    }
     fig_bp = px.pie(
         values=list(bp_filtered.values()),
         names=list(bp_filtered.keys()),
@@ -424,8 +442,12 @@ with col1:
     st.plotly_chart(fig_bp, use_container_width=True)
 
 with col2:
-    # Filter out null/zero values for Shell  
-    shell_filtered = {k: v for k, v in shell_dist.items() if v and v > 0}
+    # Filter out null/zero values for Shell and rename UC San Diego
+    shell_filtered = {
+        'UC Sister Campus' if k == 'UC San Diego' else k: v 
+        for k, v in shell_dist.items() 
+        if v and v > 0
+    }
     fig_shell = px.pie(
         values=list(shell_filtered.values()),
         names=list(shell_filtered.keys()),
@@ -442,15 +464,32 @@ with col2:
 
 # Now show the program details
 st.subheader("Program Details")
+year_range = st.slider(
+    "Select Year Range",
+    min_value=2008,
+    max_value=2024,
+    value=(2015, 2024),  # Default selection
+    step=1,
+    key="program_details_year_slider"
+)
+
 for program in merged_df['Program'].unique():
+    # Skip if program is nan
+    if pd.isna(program):
+        continue
+        
     program_data = merged_df[merged_df['Program'] == program]
+    
+    # Use slider range values
+    year_range = range(year_range[0], year_range[1] + 1)
+    
     total_funding = sum(
         program_data[f'{year} Actual'].sum() 
-        for year in range(2008, 2024) 
+        for year in year_range 
         if f'{year} Actual' in program_data.columns
     )
     
-    with st.expander(f"{program} (${total_funding:,.2f})"):
+    with st.expander(f"{program}"):
         # Get PIs and their funding for this program
         program_pis = merged_df[merged_df['Program'] == program]
         pi_funding = []
@@ -458,7 +497,7 @@ for program in merged_df['Program'].unique():
         for pi in program_pis['PI'].unique():
             pi_data = program_pis[program_pis['PI'] == pi]
             total = 0
-            for year in range(2008, 2024):
+            for year in year_range:  # Use slider range
                 actual_col = f'{year} Actual'
                 if actual_col in pi_data.columns:
                     total += float(pi_data[actual_col].iloc[0]) if pd.notna(pi_data[actual_col].iloc[0]) else 0
@@ -474,14 +513,17 @@ for program in merged_df['Program'].unique():
             pi_df = pd.DataFrame(pi_funding)
             pi_df = pi_df.sort_values('Total_Funding', ascending=False)
             
+            # Calculate total from DataFrame
+            total_from_df = pi_df['Total_Funding'].sum()
+            
             # Display program metrics
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("Total Funding", f"${total_funding:,.2f}")
+                st.metric("Total Funding", f"${total_from_df:,.2f}")
             with col2:
                 st.metric("Number of PIs", len(pi_df))
             with col3:
-                avg_funding = total_funding / len(pi_df)
+                avg_funding = total_from_df / len(pi_df)
                 st.metric("Average per PI", f"${avg_funding:,.2f}")
             
             # Create 3 columns for charts
