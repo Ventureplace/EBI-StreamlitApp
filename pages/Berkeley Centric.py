@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import plotly.express as px
+from plotly import graph_objects as go
 
 # Set up the Streamlit page configuration
 st.set_page_config(page_title="Berkeley Centric", page_icon="🏛️", layout="wide")
@@ -66,22 +67,24 @@ color_map = {
 st.subheader("EBI Lookback")
 # Prepare data for pie chart
 pie_data = df[~df['Source'].str.contains('NSF', na=False)].copy()
-pie_data = pie_data[pie_data[historical_years].sum(axis=1) > 0]
-pie_data['Total'] = pie_data[historical_years].sum(axis=1) / 1_000_000
+totals = pie_data[historical_years].sum(axis=1)
+pie_data = pie_data[totals > 0].copy()
+pie_data['Total'] = totals[totals > 0] / 1_000_000
 
-fig_pie = px.pie(
-    data_frame=pie_data,
-    values='Total',
-    names='Source',
+# Create pie chart using go.Figure instead of px
+fig_pie = go.Figure(data=[go.Pie(
+    labels=pie_data['Source'],
+    values=pie_data['Total'],
+    marker=dict(colors=[color_map.get(src, '#000000') for src in pie_data['Source']]),
+    textinfo='label+value',
+    texttemplate='%{label}<br>%{value:.1f}MM'
+)])
+
+fig_pie.update_layout(
     title='EBI Lookback (2018-2024)',
-    category_orders={'Source': category_order},
-    color='Source',
-    color_discrete_map=color_map
+    showlegend=True
 )
-fig_pie.update_traces(
-    texttemplate="%{value:.1f}MM",
-    textinfo='label+value'
-)
+
 st.plotly_chart(fig_pie, use_container_width=True)
 
 # 2. Historical Bar Chart
