@@ -139,12 +139,12 @@ fig_forecast.update_layout(
 )
 st.plotly_chart(fig_forecast, use_container_width=True)
 
-# Display the DataFrame
-st.subheader("Raw Data")
-st.dataframe(
-    df.style.format({
-        col: "${:,.2f}" for col in df.columns if col not in ['Legend', 'Source']
-    }),
-    use_container_width=True
-)
+# # Display the DataFrame
+# st.subheader("Raw Data")
+# st.dataframe(
+#     df.style.format({
+#         col: "${:,.2f}" for col in df.columns if col not in ['Legend', 'Source']
+#     }),
+#     use_container_width=True
+# )
 
