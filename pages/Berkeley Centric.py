@@ -70,15 +70,6 @@ category_order = [
     'EBI-Shell Administration fee'
 ]
 
-# Define custom colors for each category
-color_map = {
-    'Industrial Research Funds': '#0052CC',  # Dark blue
-    'EBI Squared': '#99C2FF',               # Light blue
-    'Industrial Research Subawards': '#FF4444',  # Red
-    'Awarded grants': '#FFCCCC',            # Light pink
-    'EBI-Shell Administration fee': '#4DB6AC'  # Teal
-}
-
 # 1. Historical Pie Chart
 st.subheader("EBI Lookback")
 # Prepare data for pie chart
@@ -87,11 +78,10 @@ totals = pie_data[historical_years].sum(axis=1)
 pie_data = pie_data[totals > 0].copy()
 pie_data['Total'] = totals[totals > 0] / 1_000_000
 
-# Create pie chart using go.Figure instead of px
+# Create pie chart without custom colors
 fig_pie = go.Figure(data=[go.Pie(
     labels=pie_data['Source'],
     values=pie_data['Total'],
-    marker=dict(colors=[color_map.get(src, '#000000') for src in pie_data['Source']]),
     textinfo='label+value',
     texttemplate='%{label}<br>%{value:.1f}MM'
 )])
@@ -117,9 +107,7 @@ fig_bar = px.bar(
     y='Funding',
     color='Source',
     title='Historical Funding by Category (2018-2024)',
-    labels={'Source': 'Category'},
-    category_orders={'Source': category_order},
-    color_discrete_map=color_map
+    labels={'Source': 'Category'}
 )
 fig_bar.update_layout(
     xaxis_title="Year",
@@ -142,9 +130,7 @@ fig_forecast = px.bar(
     y='Funding',
     color='Source',
     title='Funding Forecast (2025-2029)',
-    labels={'Source': 'Category'},
-    category_orders={'Source': category_order},
-    color_discrete_map=color_map
+    labels={'Source': 'Category'}
 )
 fig_forecast.update_layout(
     xaxis_title="Year",
