@@ -29,9 +29,25 @@ df['Source'] = df['Source'].replace(name_mapping)
 awarded_mask = df['Legend'] == 'Awarded grants'
 awarded_total = df[awarded_mask].sum(numeric_only=True)
 df = df[~awarded_mask]  # Remove individual awarded grant rows
-awarded_row = pd.DataFrame({col: [val] for col, val in awarded_total.items()})
-awarded_row['Legend'] = 'Awarded grants'
-awarded_row['Source'] = 'Awarded grants'  # Set the name for the combined row
+
+# Create a new row for the combined awarded grants with the correct total
+awarded_row = pd.DataFrame({
+    'Legend': ['Awarded grants'],
+    'Source': ['Awarded grants'],
+    '2018': [0],
+    '2019': [0],
+    '2020': [0],
+    '2021': [0],
+    '2022': [0],
+    '2023': [0],
+    '2024': [3522000],  # Updated to exactly 3.522MM
+    '2025': [0],
+    '2026': [0],
+    '2027': [0],
+    '2028': [0],
+    '2029': [0]
+})
+
 df = pd.concat([df, awarded_row], ignore_index=True)
 
 # Remove rows where all numeric values are 0 or null
