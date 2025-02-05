@@ -16,6 +16,17 @@ numeric_columns = df.columns[1:]  # Skip the first column (categories)
 for col in numeric_columns:
     df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce')
 
+# Combine all Scown entries
+scown_mask = df[df.columns[0]].str.contains('Scown', na=False)
+scown_total = df[scown_mask].sum(numeric_only=True)
+df = df[~scown_mask]  # Remove individual Scown rows
+scown_row = pd.DataFrame({col: [val] for col, val in scown_total.items()})
+scown_row[df.columns[0]] = 'Scown'  # Set the name for the combined row
+df = pd.concat([df, scown_row], ignore_index=True)
+
+# Remove rows where all numeric values are 0 or null
+df = df[df[numeric_columns].sum(axis=1) != 0]
+
 # Calculate totals up to 2024 for pie and bar charts
 historical_years = ['2018', '2019', '2020', '2021', '2022', '2023', '2024']
 df['Historical_Total'] = df[historical_years].sum(axis=1)
@@ -24,16 +35,25 @@ df['Historical_Total'] = df[historical_years].sum(axis=1)
 forecast_years = ['2025', '2026', '2027', '2028', '2029']
 df['Forecast_Total'] = df[forecast_years].sum(axis=1)
 
+
 # 1. Historical Pie Chart
 st.subheader("EBI Lookback")
 df_without_nsf = df[df[df.columns[0]] != 'NSF']  # Filter out NSF
+df_without_nsf = df_without_nsf[df_without_nsf['Historical_Total'] > 0]  # Filter out zero totals
+
+# Convert values to millions
+df_without_nsf['Historical_Total_MM'] = df_without_nsf['Historical_Total'] / 1_000_000
+
 fig_pie = px.pie(
     df_without_nsf,
-    values='Historical_Total',
+    values='Historical_Total_MM',
     names=df.columns[0],  # First column name
     title='EBI Lookback (2018-2024)'
 )
-fig_pie.update_traces(textinfo='percent+label')
+fig_pie.update_traces(
+    texttemplate="%{value:.1f}MM",  # Format to show one decimal place and MM
+    textinfo='label+value'
+)
 st.plotly_chart(fig_pie, use_container_width=True)
 
 # 2. Historical Bar Chart
@@ -82,20 +102,3 @@ fig_forecast.update_layout(
 )
 st.plotly_chart(fig_forecast, use_container_width=True)
 
-# Add summary metrics
-col1, col2 = st.columns(2)
-with col1:
-    total_historical = df['Historical_Total'].sum()
-    st.metric("Total Historical Funding (2018-2024)", f"${total_historical:,.2f}")
-with col2:
-    total_forecast = df['Forecast_Total'].sum()
-    st.metric("Total Forecast Funding (2025-2029)", f"${total_forecast:,.2f}")
-
-# Display the DataFrame
-st.subheader("Raw Data")
-st.dataframe(
-    df.style.format({
-        col: "${:,.2f}" for col in df.columns if col != df.columns[0]  # Format all numeric columns as currency
-    }),
-    use_container_width=True
-)
