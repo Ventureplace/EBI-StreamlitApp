@@ -64,13 +64,14 @@ color_map = {
 
 # 1. Historical Pie Chart
 st.subheader("EBI Lookback")
-df_without_nsf = df[~df['Source'].str.contains('NSF', na=False)]
-df_without_nsf = df_without_nsf[df_without_nsf['Historical_Total'] > 0]
-df_without_nsf['Historical_Total_MM'] = df_without_nsf['Historical_Total'] / 1_000_000
+# Prepare data for pie chart
+pie_data = df[~df['Source'].str.contains('NSF', na=False)].copy()
+pie_data = pie_data[pie_data[historical_years].sum(axis=1) > 0]
+pie_data['Total'] = pie_data[historical_years].sum(axis=1) / 1_000_000
 
 fig_pie = px.pie(
-    df_without_nsf,
-    values='Historical_Total_MM',
+    data_frame=pie_data,
+    values='Total',
     names='Source',
     title='EBI Lookback (2018-2024)',
     category_orders={'Source': category_order},
