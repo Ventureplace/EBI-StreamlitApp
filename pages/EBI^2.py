@@ -105,28 +105,25 @@ with right_column:
     fig2.update_layout(height=400)
     st.plotly_chart(fig2, use_container_width=True)
 
-# Create three columns for additional charts
-col1, col2, col3 = st.columns(3)
+# Create single column for additional chart
+col1 = st.columns(1)[0]
 
 with col1:
-    # Location distribution
-    location_dist = df['HQ_Location'].value_counts().head(10)
-    fig3 = px.pie(
-        values=location_dist.values,
-        names=location_dist.index,
-        title="Top 10 Company Locations"
+    # Funds raised by company (top 10)
+    company_funding = df.nlargest(10, 'Total_Raised')[['Company', 'Total_Raised']]
+    fig3 = px.bar(
+        company_funding,
+        x='Company',
+        y='Total_Raised',
+        title="Top 10 Companies by Funds Raised",
+        labels={'Total_Raised': 'Total Raised ($M)', 'Company': 'Company Name'}
+    )
+    # Rotate x-axis labels for better readability
+    fig3.update_layout(
+        xaxis_tickangle=-45,
+        height=400
     )
     st.plotly_chart(fig3, use_container_width=True)
-
-with col2:
-    # Ownership status
-    ownership = df['Ownership_Status'].value_counts()
-    fig4 = px.pie(
-        values=ownership.values,
-        names=ownership.index,
-        title="Ownership Status Distribution"
-    )
-    st.plotly_chart(fig4, use_container_width=True)
 
 # Company Details Section
 st.markdown("---")
