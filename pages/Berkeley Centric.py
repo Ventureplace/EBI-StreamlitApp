@@ -8,6 +8,17 @@ from plotly import graph_objects as go
 st.set_page_config(page_title="Berkeley Centric", page_icon="🏛️", layout="wide")
 st.title("🏛️ Berkeley Financial Overview")
 
+# Add toggle for historical data (place this after st.title and before the charts)
+show_full_history = st.toggle(
+    "Show Full History (2008-2024)",
+    help="Toggle between full historical view (2008-2024) and recent history (2018-2024)"
+)
+
+# Update year ranges based on toggle (place this before creating charts)
+historical_years = ['2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', 
+                   '2018', '2019', '2020', '2021', '2022', '2023', '2024'] if show_full_history else \
+                  ['2018', '2019', '2020', '2021', '2022', '2023', '2024']
+
 # Create connection to Google Sheets
 conn = st.connection("gsheets_berkeley", type=GSheetsConnection)
 df = conn.read()
@@ -17,13 +28,31 @@ numeric_columns = df.columns[2:]  # Skip the first two columns (Legend and Sourc
 for col in numeric_columns:
     df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce')
 
-# Update category names
+# Update category names and add historical data for Industrial Research Funds
 name_mapping = {
     'Research (Berkeley only)': 'Industrial Research Funds',
     'reports': 'Industrial Research Subawards',
     'Administration fee': 'EBI-Shell Administration fee'
 }
 df['Source'] = df['Source'].replace(name_mapping)
+
+# Add historical data for Industrial Research Funds (2008-2017)
+historical_data = {
+    '2008': 20584189,
+    '2009': 25096496,
+    '2010': 26605738,
+    '2011': 23479193,
+    '2012': 24834119,
+    '2013': 23661767,
+    '2014': 22907166,
+    '2015': 15701583,
+    '2016': 3307551,
+    '2017': 2521255
+}
+
+# Add historical data to Industrial Research Funds rows
+for year, value in historical_data.items():
+    df.loc[df['Source'] == 'Industrial Research Funds', year] = value
 
 # Combine all Awarded Grants entries
 awarded_mask = df['Legend'] == 'Awarded grants'
@@ -54,7 +83,6 @@ df = pd.concat([df, awarded_row], ignore_index=True)
 df = df[df[numeric_columns].sum(axis=1) != 0]
 
 # Calculate totals up to 2024 for pie and bar charts
-historical_years = ['2018', '2019', '2020', '2021', '2022', '2023', '2024']
 df['Historical_Total'] = df[historical_years].sum(axis=1)
 
 # Calculate forecast totals (2025-2029)
