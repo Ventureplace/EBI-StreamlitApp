@@ -197,16 +197,16 @@ if industry_filter:
 if year_filter:
     df = df[df['Year_Founded'].between(year_filter[0], year_filter[1])]
 
-# Display the dataframe with column filters and sorting capabilities
-st.subheader("Raw Data")
-st.dataframe(
-    df,
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        col: st.column_config.NumberColumn(format="${:,.0f}") 
-        for col in df.select_dtypes(include=['float64', 'int64']).columns
-    }
-)
+# # Display the dataframe with column filters and sorting capabilities
+# st.subheader("Raw Data")
+# st.dataframe(
+#     df,
+#     use_container_width=True,
+#     hide_index=True,
+#     column_config={
+#         col: st.column_config.NumberColumn(format="${:,.0f}") 
+#         for col in df.select_dtypes(include=['float64', 'int64']).columns
+#     }
+# )
 
 
