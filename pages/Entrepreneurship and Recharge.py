@@ -6,20 +6,18 @@ from plotly import graph_objects as go
 
 
 # Set up the Streamlit page configuration
-st.set_page_config(page_title="EBI^2", page_icon="🔍", layout="wide")
-st.title("🔍 EBI^2")
+st.set_page_config(page_title="Entrepreneurship and Recharge", page_icon="🔍", layout="wide")
+st.title("🔍 Entrepreneurship and Recharge")
 
 # Create connection to Google Sheets
 conn = st.connection("gsheets_ebi2", type=GSheetsConnection)
 df = conn.read()
 
-
-
 # Clean column names by removing spaces and special characters
 df.columns = df.columns.str.strip().str.replace(' ', '_')
 
 # Top level metrics
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns(3)
 
 with col1:
     st.metric(
@@ -36,46 +34,72 @@ with col2:
     )
 
 with col3:
-    total_employees = df['Employees'].sum()
+    total_employees = int(df['Employees'].sum())
     st.metric(
         "Total Employees",
         f"{total_employees:,}"
     )
 
-with col4:
-    active_investors = df['Active_Investors'].nunique()
-    st.metric(
-        "Active Investors",
-        active_investors
-    )
+# Create connection to Google Sheets
+conn = st.connection("gsheets_berkeley", type=GSheetsConnection)
+berkeley_df = conn.read()
 
-    years = list(range(2018, 2026))
-ebi_squared_values = [34373, 127839, 50507, 66815, 162304, 118231, 140268, 140268]
+# Extract years and values for the chart
+years = list(range(2018, 2026))  # Keep existing year range
 
-# Create bar chart
+# Get EBI Squared and EBI Recharge data from berkeley_df
+ebi_squared_row = berkeley_df[berkeley_df['Legend'] == 'EBI Squared'].iloc[0]
+ebi_recharge_row = berkeley_df[berkeley_df['Legend'] == 'EBI Squared'].iloc[1]  # The EBI Recharge row
+
+# Extract values for the selected years
+ebi_squared_values = [float(str(ebi_squared_row[str(year)]).replace(',', '')) for year in years]
+ebi_recharge_values = [float(str(ebi_recharge_row[str(year)]).replace(',', '') or 0) for year in years]
+
+# Create stacked bar chart
 fig = go.Figure()
+
+# Add EBI Squared bars
 fig.add_trace(
     go.Bar(
         x=years,
         y=ebi_squared_values,
-        text=[f"${x:,}" for x in ebi_squared_values],
+        name='EBI²',
+        text=[f"${x:,.0f}" for x in ebi_squared_values],
         textposition='auto',
-        marker_color='#1f77b4'  # Professional blue color
+        marker_color='#1f77b4'
+    )
+)
+
+# Add EBI Recharge bars
+fig.add_trace(
+    go.Bar(
+        x=years,
+        y=ebi_recharge_values,
+        name='EBI Recharge',
+        text=[f"${x:,.0f}" for x in ebi_recharge_values],
+        textposition='auto',
+        marker_color='#2ca02c'
     )
 )
 
 fig.update_layout(
-    title="EBI² Annual Budget (2018-2025)",
+    title="Entrepreneurship and Recharge Annual Budget (2018-2025)",
     xaxis_title="Year",
     yaxis_title="Budget ($)",
-    showlegend=False,
-    height=500  # Make chart taller for better visibility
+    barmode='stack',
+    height=500,
+    showlegend=True,
+    legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    )
 )
 
 # Display chart
 st.plotly_chart(fig, use_container_width=True)
-
-
 
 # Create two columns for main charts
 left_column, right_column = st.columns(2)
@@ -92,15 +116,17 @@ with left_column:
     )
     fig1.update_layout(height=400)
     st.plotly_chart(fig1, use_container_width=True)
+    st.caption("*Data sourced from PitchBook - values may not be fully accurate or up to date")
 
 with right_column:
-    # Companies by founding year
-    yearly_companies = df['Year_Founded'].value_counts().sort_index()
+    # Employee distribution by industry
+    industry_employees = df.groupby('Primary_Industry_Code')['Employees'].sum().sort_values(ascending=True)
     
-    fig2 = px.line(
-        yearly_companies,
-        title="Companies Founded by Year",
-        labels={'value': 'Number of Companies', 'index': 'Year'}
+    fig2 = px.bar(
+        industry_employees,
+        orientation='h',
+        title="Total Employees by Industry",
+        labels={'value': 'Number of Employees', 'Primary_Industry_Code': 'Industry'}
     )
     fig2.update_layout(height=400)
     st.plotly_chart(fig2, use_container_width=True)
@@ -124,6 +150,7 @@ with col1:
         height=400
     )
     st.plotly_chart(fig3, use_container_width=True)
+    st.caption("*Data sourced from PitchBook - values may not be fully accurate or up to date")
 
 # Company Details Section
 st.markdown("---")
@@ -169,4 +196,17 @@ if industry_filter:
     df = df[df['Primary_Industry_Code'].isin(industry_filter)]
 if year_filter:
     df = df[df['Year_Founded'].between(year_filter[0], year_filter[1])]
+
+# Display the dataframe with column filters and sorting capabilities
+st.subheader("Raw Data")
+st.dataframe(
+    df,
+    use_container_width=True,
+    hide_index=True,
+    column_config={
+        col: st.column_config.NumberColumn(format="${:,.0f}") 
+        for col in df.select_dtypes(include=['float64', 'int64']).columns
+    }
+)
+
 
