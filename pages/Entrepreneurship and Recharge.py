@@ -177,25 +177,25 @@ st.dataframe(
     hide_index=True
 )
 
-# Add filters in the sidebar
-st.sidebar.header("Filters")
-industry_filter = st.sidebar.multiselect(
-    "Filter by Industry",
-    options=sorted(df['Primary_Industry_Code'].unique())
-)
+# # Add filters in the sidebar
+# st.sidebar.header("Filters")
+# industry_filter = st.sidebar.multiselect(
+#     "Filter by Industry",
+#     options=sorted(df['Primary_Industry_Code'].unique())
+# )
 
-year_filter = st.sidebar.slider(
-    "Filter by Founded Year",
-    min_value=int(df['Year_Founded'].min()),
-    max_value=int(df['Year_Founded'].max()),
-    value=(int(df['Year_Founded'].min()), int(df['Year_Founded'].max()))
-)
+# year_filter = st.sidebar.slider(
+#     "Filter by Founded Year",
+#     min_value=int(df['Year_Founded'].min()),
+#     max_value=int(df['Year_Founded'].max()),
+#     value=(int(df['Year_Founded'].min()), int(df['Year_Founded'].max()))
+# )
 
-# Apply filters if selected
-if industry_filter:
-    df = df[df['Primary_Industry_Code'].isin(industry_filter)]
-if year_filter:
-    df = df[df['Year_Founded'].between(year_filter[0], year_filter[1])]
+# # Apply filters if selected
+# if industry_filter:
+#     df = df[df['Primary_Industry_Code'].isin(industry_filter)]
+# if year_filter:
+#     df = df[df['Year_Founded'].between(year_filter[0], year_filter[1])]
 
 # # Display the dataframe with column filters and sorting capabilities
 # st.subheader("Raw Data")
