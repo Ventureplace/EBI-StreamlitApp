@@ -14,10 +14,22 @@ show_full_history = st.toggle(
     help="Toggle between full historical view (2008-2024) and recent history (2018-2024)"
 )
 
-# Update year ranges based on toggle (place this before creating charts)
-historical_years = ['2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', 
-                   '2018', '2019', '2020', '2021', '2022', '2023', '2024'] if show_full_history else \
-                  ['2018', '2019', '2020', '2021', '2022', '2023', '2024']
+# Add time series filter
+col1, col2 = st.columns(2)
+with col1:
+    min_year = 2008 if show_full_history else 2018
+    max_year = 2024
+    time_series_year_range = st.slider(
+        "Select Year Range",
+        min_value=min_year,
+        max_value=max_year,
+        value=(min_year, max_year),
+        step=1,
+        help="Filter data by year range"
+    )
+
+# Update year ranges based on toggle and slider
+historical_years = [str(year) for year in range(time_series_year_range[0], time_series_year_range[1] + 1)]
 
 # Create connection to Google Sheets
 conn = st.connection("gsheets_berkeley", type=GSheetsConnection)
@@ -115,7 +127,7 @@ fig_pie = go.Figure(data=[go.Pie(
 )])
 
 fig_pie.update_layout(
-    title='EBI Lookback (2018-2024)',
+    title=f'EBI Lookback ({time_series_year_range[0]}-{time_series_year_range[1]})',
     showlegend=True
 )
 
@@ -134,7 +146,7 @@ fig_bar = px.bar(
     x='Year',
     y='Funding',
     color='Source',
-    title='Historical Funding by Category (2018-2024)',
+    title=f'Historical Funding by Category ({time_series_year_range[0]}-{time_series_year_range[1]})',
     labels={'Source': 'Category'}
 )
 fig_bar.update_layout(
