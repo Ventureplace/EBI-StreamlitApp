@@ -47,13 +47,13 @@ berkeley_df = conn.read()
 # Extract years and values for the chart
 years = list(range(2018, 2026))  # Keep existing year range
 
-# Get EBI Squared and EBI Recharge data from berkeley_df
-ebi_squared_row = berkeley_df[berkeley_df['Legend'] == 'EBI Squared'].iloc[0]
-ebi_recharge_row = berkeley_df[berkeley_df['Legend'] == 'EBI Squared'].iloc[1]  # The EBI Recharge row
+# Get EBI Recharge and EBI Squared data from berkeley_df
+ebi_squared_row = berkeley_df[berkeley_df['Legend'] == 'EBI Squared'].iloc[1]  # The EBI Squared row
+ebi_recharge_row = berkeley_df[berkeley_df['Legend'] == 'EBI Squared'].iloc[0]  # The EBI Recharge row
 
 # Extract values for the selected years
-ebi_squared_values = [float(str(ebi_squared_row[str(year)]).replace(',', '')) for year in years]
-ebi_recharge_values = [float(str(ebi_recharge_row[str(year)]).replace(',', '') or 0) for year in years]
+ebi_squared_values = [float(str(ebi_squared_row[str(year)]).replace(',', '') or 0) for year in years]
+ebi_recharge_values = [float(str(ebi_recharge_row[str(year)]).replace(',', '')) for year in years]
 
 # Create stacked bar chart
 fig = go.Figure()
