@@ -114,6 +114,8 @@ category_order = [
 st.subheader("EBI Lookback")
 # Prepare data for pie chart
 pie_data = df[~df['Source'].str.contains('NSF', na=False)].copy()
+# Filter out Finance Data
+pie_data = pie_data[pie_data['Source'] != 'Finance Data'].copy()
 totals = pie_data[historical_years].sum(axis=1)
 pie_data = pie_data[totals > 0].copy()
 pie_data['Total'] = totals[totals > 0] / 1_000_000
@@ -140,6 +142,8 @@ historical_data = df[~df['Source'].str.contains('NSF', na=False)].melt(
     var_name='Year',
     value_name='Funding'
 )
+# Filter out Finance Data
+historical_data = historical_data[historical_data['Source'] != 'Finance Data']
 
 fig_bar = px.bar(
     historical_data,
@@ -163,6 +167,8 @@ forecast_data = df.melt(
     var_name='Year',
     value_name='Funding'
 )
+# Filter out Finance Data
+forecast_data = forecast_data[forecast_data['Source'] != 'Finance Data']
 
 fig_forecast = px.bar(
     forecast_data,
