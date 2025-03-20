@@ -17,7 +17,8 @@ show_full_history = st.toggle(
 # Add time series filter
 col1, col2 = st.columns(2)
 with col1:
-    min_year = 2008 if show_full_history else 2018
+    # Always start from 2008 now that we have the data
+    min_year = 2008
     max_year = 2024
     time_series_year_range = st.slider(
         "Select Year Range",
@@ -25,7 +26,8 @@ with col1:
         max_value=max_year,
         value=(min_year, max_year),
         step=1,
-        help="Filter data by year range"
+        help="Filter data by year range",
+        key=f"year_slider_{min_year}_{max_year}"
     )
 
 # Update year ranges based on toggle and slider
@@ -40,31 +42,13 @@ numeric_columns = df.columns[2:]  # Skip the first two columns (Legend and Sourc
 for col in numeric_columns:
     df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce')
 
-# Update category names and add historical data for Industrial Research Funds
+# Update name mapping
 name_mapping = {
     'Research (Berkeley only)': 'Industrial Research Funds',
     'reports': 'Industrial Research Subawards',
     'Administration fee': 'EBI-Shell Administration fee'
 }
 df['Source'] = df['Source'].replace(name_mapping)
-
-# Add historical data for Industrial Research Funds (2008-2017)
-historical_data = {
-    '2008': 20584189,
-    '2009': 25096496,
-    '2010': 26605738,
-    '2011': 23479193,
-    '2012': 24834119,
-    '2013': 23661767,
-    '2014': 22907166,
-    '2015': 15701583,
-    '2016': 3307551,
-    '2017': 2521255
-}
-
-# Add historical data to Industrial Research Funds rows
-for year, value in historical_data.items():
-    df.loc[df['Source'] == 'Industrial Research Funds', year] = value
 
 # Combine all Awarded Grants entries
 awarded_mask = df['Legend'] == 'Awarded grants'
