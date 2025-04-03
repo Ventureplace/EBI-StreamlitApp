@@ -24,6 +24,7 @@ with col1:
         help="Filter data by year range",
         key=f"year_slider_{min_year}_{max_year}"
     )
+    st.markdown("<h3 style='font-size:16px;'>2008-2015 BP / 2017 + Shell</h3>", unsafe_allow_html=True)
 
 # Update year ranges based on toggle and slider
 historical_years = [str(year) for year in range(time_series_year_range[0], time_series_year_range[1] + 1)]
