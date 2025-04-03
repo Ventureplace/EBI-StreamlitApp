@@ -44,8 +44,8 @@ for col in numeric_columns:
 
 # Update name mapping
 name_mapping = {
-    'Research (Berkeley only)': 'Industrial Research Funds',
-    'reports': 'Industrial Research Subawards',
+    'Research (Berkeley only)': 'Berkeley Research Funds',
+    'reports': ' Research Subawards',
     'Administration fee': 'EBI-Shell Administration fee'
 }
 df['Source'] = df['Source'].replace(name_mapping)
