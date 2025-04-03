@@ -8,23 +8,18 @@ from plotly import graph_objects as go
 st.set_page_config(page_title="Berkeley Centric", page_icon="🏛️", layout="wide")
 st.title("🏛️ Berkeley Financial Overview")
 
-# Add toggle for historical data (place this after st.title and before the charts)
-show_full_history = st.toggle(
-    "Show Full History (2008-2024)",
-    help="Toggle between full historical view (2008-2024) and recent history (2018-2024)"
-)
 
 # Add time series filter
 col1, col2 = st.columns(2)
 with col1:
-    # Always start from 2008 now that we have the data
+    # Always start from 2017 now that we have the data
     min_year = 2008
     max_year = 2024
     time_series_year_range = st.slider(
         "Select Year Range",
         min_value=min_year,
         max_value=max_year,
-        value=(min_year, max_year),
+        value=(2017, max_year),  # Default to 2017
         step=1,
         help="Filter data by year range",
         key=f"year_slider_{min_year}_{max_year}"
