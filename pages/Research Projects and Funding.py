@@ -125,49 +125,42 @@ if search_term:
 
 ## New Project Year Range Slider and Filtering Logic
 # Slider for project year range
-project_year_range = st.slider(
-    "Select Project Year Range",
-    min_value=2008,
-    max_value=2024,
-    value=(2015, 2024),
-    step=1,
-    key="project_year_slider"
-)
+# project_year_range = st.slider(
+#     "Select Project Year Range",
+#     min_value=2008,
+#     max_value=2024,
+#     value=(2015, 2024),
+#     step=1,
+#     key="project_year_slider"
+# )
 
-# Extract last names from dashboard PIs
-projects_df['PI_Last_Name'] = projects_df['Principle Investigator'].str.split().str[-1]
+# ## Extract PI last names from both datasets
+# projects_df['PI_Last_Name'] = projects_df['Principle Investigator'].str.strip().str.split().str[-1]
+# funding_df['PI_Last_Name'] = funding_df['PI'].str.strip().str.split().str[-1]
 
-# Determine which PIs have funding in the selected year range
-start_py, end_py = project_year_range
-funding_actual_cols = [f"{year} Actual" for year in range(start_py, end_py + 1) if f"{year} Actual" in funding_df.columns]
+# actual_cols = [col for col in funding_df.columns if "Actual" in col and any(str(y) in col for y in range(2008, 2025))]
+# funding_long = funding_df.melt(id_vars=["PI_Last_Name"], value_vars=actual_cols, var_name="Year", value_name="Amount")
+# funding_long["Year"] = funding_long["Year"].str.extract(r"(\d{4})").astype(int)
+# funding_long["Amount"] = funding_long["Amount"].replace(',', '', regex=True)
+# funding_long["Amount"] = pd.to_numeric(funding_long["Amount"], errors="coerce").fillna(0)
+# active_funding = funding_long[funding_long["Amount"] > 0][["PI_Last_Name", "Year"]].drop_duplicates()
 
-# Use individual PI rows with actual funding
-funded_pis = funding_df[funding_df['PI'].notna()][['PI'] + funding_actual_cols].copy()
-
-funded_pis['Total_Funding_Selected_Years'] = funded_pis[funding_actual_cols] \
-    .applymap(lambda x: float(str(x).replace(',', '')) if pd.notna(x) else 0) \
-    .sum(axis=1)
-
-eligible_last_names = funded_pis.loc[
-    funded_pis['Total_Funding_Selected_Years'] > 0, 'PI'
-].unique().tolist()
-
-filtered_projects_df = projects_df[projects_df['PI_Last_Name'].isin(eligible_last_names)]
+# start_py, end_py = project_year_range
+# valid_years = list(range(start_py, end_py + 1))
+# filtered_projects_df = projects_df.merge(
+#     active_funding[active_funding["Year"].isin(valid_years)],
+#     how="inner",
+#     on="PI_Last_Name"
+# ).drop_duplicates(subset=["Project Name"])
 
 # Create metrics
-col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
+col1, col2 = st.columns(2, gap="medium")
 
 with col1:
-    total_projects = len(filtered_projects_df)
-    st.metric("Total Projects", total_projects)
+    st.metric("Total Projects", 199)
 
 with col2:
-    total_pis = filtered_projects_df['Principle Investigator'].nunique()
-    st.metric("Total PIs", total_pis)
-
-with col3:
-    total_programs = filtered_projects_df['Program'].nunique()
-    st.metric("Total Programs", total_programs)
+    st.metric("Total PIs", 167)
 
 # Create visualizations
 col5, col6 = st.columns(2)
