@@ -8,6 +8,30 @@ from plotly import graph_objects as go
 st.set_page_config(page_title="Berkeley Centric", page_icon="🏛️", layout="wide")
 st.title("🏛️ Berkeley Financial Overview")
 
+@st.cache_data(ttl=600)
+def load_data():
+    conn_dashboard = st.connection("gsheets_dashboard", type=GSheetsConnection)
+    conn_funding = st.connection("gsheets_funding", type=GSheetsConnection)
+    return conn_dashboard.read(), conn_funding.read()
+
+
+# Load dashboard data and filter for Berkeley projects
+dashboard_df, _ = load_data()
+berkeley_projects_df = dashboard_df[dashboard_df['Institution'] == 'UC Berkeley']
+
+# Calculate top-level Berkeley metrics
+total_berkeley_projects = len(berkeley_projects_df)
+total_berkeley_pis = berkeley_projects_df['Principle Investigator'].nunique()
+total_berkeley_programs = berkeley_projects_df['Program'].nunique()
+
+# Display Berkeley project metrics
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("Total Projects", total_berkeley_projects)
+with col2:
+    st.metric("Total PIs", total_berkeley_pis)
+with col3:
+    st.metric("Total Programs", total_berkeley_programs)
 
 # Add time series filter
 col1, col2 = st.columns(2)
@@ -32,6 +56,7 @@ historical_years = [str(year) for year in range(time_series_year_range[0], time_
 # Create connection to Google Sheets
 conn = st.connection("gsheets_berkeley", type=GSheetsConnection)
 df = conn.read()
+
 
 # Clean up the data - convert to numeric and handle NaN
 numeric_columns = df.columns[2:]  # Skip the first two columns (Legend and Source)
@@ -173,4 +198,3 @@ st.plotly_chart(fig_forecast, use_container_width=True)
 #     }),
 #     use_container_width=True
 # )
-

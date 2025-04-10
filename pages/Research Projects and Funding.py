@@ -123,19 +123,50 @@ if search_term:
 # st.write("\n### Column Names:")
 # st.write(projects_df.columns.tolist())
 
+## New Project Year Range Slider and Filtering Logic
+# Slider for project year range
+project_year_range = st.slider(
+    "Select Project Year Range",
+    min_value=2008,
+    max_value=2024,
+    value=(2015, 2024),
+    step=1,
+    key="project_year_slider"
+)
+
+# Extract last names from dashboard PIs
+projects_df['PI_Last_Name'] = projects_df['Principle Investigator'].str.split().str[-1]
+
+# Determine which PIs have funding in the selected year range
+start_py, end_py = project_year_range
+funding_actual_cols = [f"{year} Actual" for year in range(start_py, end_py + 1) if f"{year} Actual" in funding_df.columns]
+
+# Use individual PI rows with actual funding
+funded_pis = funding_df[funding_df['PI'].notna()][['PI'] + funding_actual_cols].copy()
+
+funded_pis['Total_Funding_Selected_Years'] = funded_pis[funding_actual_cols] \
+    .applymap(lambda x: float(str(x).replace(',', '')) if pd.notna(x) else 0) \
+    .sum(axis=1)
+
+eligible_last_names = funded_pis.loc[
+    funded_pis['Total_Funding_Selected_Years'] > 0, 'PI'
+].unique().tolist()
+
+filtered_projects_df = projects_df[projects_df['PI_Last_Name'].isin(eligible_last_names)]
+
 # Create metrics
 col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
 
 with col1:
-    total_projects = len(projects_df)
+    total_projects = len(filtered_projects_df)
     st.metric("Total Projects", total_projects)
 
 with col2:
-    total_pis = projects_df['Principle Investigator'].nunique()
+    total_pis = filtered_projects_df['Principle Investigator'].nunique()
     st.metric("Total PIs", total_pis)
 
 with col3:
-    total_programs = projects_df['Program'].nunique()
+    total_programs = filtered_projects_df['Program'].nunique()
     st.metric("Total Programs", total_programs)
 
 # Create visualizations
@@ -165,16 +196,48 @@ conn_funding = st.connection("gsheets_funding", type=GSheetsConnection)
 conn_admin = st.connection("gsheets_admin", type=GSheetsConnection)
 
 funding_df = conn_funding.read()
+# Clean column names
+funding_df.columns = funding_df.columns.str.strip()
 admin_df = conn_admin.read()
 
+# Slider for funding year range
+funding_year_range = st.slider(
+    "Select Funding Year Range",
+    min_value=2008,
+    max_value=2024,
+    value=(2015, 2024),
+    step=1,
+    key="funding_year_slider"
+)
+
 # Extract values
-berkeley_research_earnings = 48_858_138.26  # Total Berkeley research earnings
-berkeley_admin_earnings = 1_907_444.95 + 35_846_686.11     # Total Berkeley admin earnings
+# Dynamically compute research and admin earnings based on selected year range
+start_year, end_year = funding_year_range
+actual_cols = [f"{year} Actual" for year in range(start_year, end_year + 1) if f"{year} Actual" in funding_df.columns]
+# Define budget columns for research totals
+budget_cols = [f"{year} Budget" for year in range(start_year, end_year + 1) if f"{year} Budget" in funding_df.columns]
+# Clean and sum Research Total row
+research_row = funding_df[funding_df['Type'].astype(str).str.strip() == 'Research Total']
+if not research_row.empty:
+    research_values = research_row[budget_cols].applymap(lambda x: str(x).replace(',', '') if pd.notna(x) else '0')
+    research_values = research_values.apply(pd.to_numeric, errors='coerce')
+    berkeley_research_earnings = research_values.sum(axis=1).iloc[0]
+else:
+    berkeley_research_earnings = 0
+
+# Clean and sum Sub Award Total row
+subaward_row = funding_df[funding_df['Type'].astype(str).str.strip() == 'Sub Award Total']
+if not subaward_row.empty:
+    subaward_values = subaward_row[actual_cols].applymap(lambda x: str(x).replace(',', '') if pd.notna(x) else '0')
+    subaward_values = subaward_values.apply(pd.to_numeric, errors='coerce')
+    berkeley_subaward_earnings = subaward_values.sum(axis=1).iloc[0]
+else:
+    berkeley_subaward_earnings = 0
 
 # Create pie chart data
 ebi_distribution = pd.DataFrame({
     'Category': ["Berkeley's Earnings Admin", "Berkeley's Earnings Research"],
-    'Amount': [berkeley_admin_earnings, berkeley_research_earnings]
+    'Amount': [berkeley_subaward_earnings, berkeley_research_earnings]
 })
 
 # Display total amounts
@@ -183,9 +246,9 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.metric("Research Funds", f"${berkeley_research_earnings:,.2f}")
 with col2:
-    st.metric("Outside Funds", f"${berkeley_admin_earnings:,.2f}") 
+    st.metric("Outside Funds", f"${berkeley_subaward_earnings:,.2f}") 
 with col3:
-    total_funds = berkeley_research_earnings + berkeley_admin_earnings
+    total_funds = berkeley_research_earnings + berkeley_subaward_earnings
     st.metric("Total Funds", f"${total_funds:,.2f}")
 
 
@@ -626,3 +689,26 @@ for program in merged_df['Program'].unique():
 
 
 
+# Debug section to show raw dataframes
+st.markdown("---")
+st.header("Debug: Raw Data")
+
+with st.expander("Dashboard Data"):
+    st.write("### Projects Dashboard Data")
+    st.dataframe(projects_df, use_container_width=True)
+    st.write(f"Total rows in dashboard: {len(projects_df)}")
+    st.write("Columns:", projects_df.columns.tolist())
+
+with st.expander("Funding Data"):
+    st.write("### Funding Data")
+    st.dataframe(funding_df, use_container_width=True)
+    st.write(f"Total rows in funding: {len(funding_df)}")
+    st.write("Columns:", funding_df.columns.tolist())
+    st.write("Actual Columns Used:", actual_cols)
+    
+    # Show values in the rows being summed
+    st.write("Research Row (raw):")
+    st.write(funding_df[funding_df['Type'].astype(str).str.strip() == 'Research Total'][actual_cols])
+    
+    st.write("Sub-award Row (raw):")
+    st.write(funding_df[funding_df['Type'].astype(str).str.strip() == 'Sub Award Total'][actual_cols])
