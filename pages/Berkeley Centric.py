@@ -26,21 +26,18 @@ total_berkeley_programs = berkeley_projects_df['Program'].nunique()
 
 st.subheader("Berkeley Projects")
 # Display Berkeley project metrics
-col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns(2)
 with col1:
     st.metric("Total Projects", 22)  # Hardcoded value
 with col2:
     st.metric("Total PIs", 18)  # Hardcoded value
-with col3:
-    st.metric("Total Programs", total_berkeley_programs)
+
 st.subheader("BP Projects")
-col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns(2)
 with col1:
     st.metric("Total Projects", 93)
 with col2:
     st.metric("Total PIs", 54)
-with col3:
-    st.metric("Total Programs", total_berkeley_programs)
 
 
 # Add time series filter
